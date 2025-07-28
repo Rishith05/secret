@@ -1,0 +1,92 @@
+import com.google.gson.*;
+import java.math.BigInteger;
+import java.util.*;
+
+public class ShamirFromJson {
+
+    public static BigInteger reconstructSecret(int[] x, BigInteger[] y, int k) {
+        BigInteger secret = BigInteger.ZERO;
+
+        for (int i = 0; i < k; i++) {
+            BigInteger numerator = BigInteger.ONE;
+            BigInteger denominator = BigInteger.ONE;
+
+            for (int j = 0; j < k; j++) {
+                if (i != j) {
+                    numerator = numerator.multiply(BigInteger.valueOf(-x[j]));
+                    denominator = denominator.multiply(BigInteger.valueOf(x[i] - x[j]));
+                }
+            }
+
+            BigInteger term = y[i].multiply(numerator).divide(denominator);
+            secret = secret.add(term);
+        }
+
+        return secret;
+    }
+
+    public static void processJson(String jsonInput) {
+        JsonObject obj = JsonParser.parseString(jsonInput).getAsJsonObject();
+        JsonObject keys = obj.getAsJsonObject("keys");
+        int n = keys.get("n").getAsInt();
+        int k = keys.get("k").getAsInt();
+
+        int[] x = new int[k];
+        BigInteger[] y = new BigInteger[k];
+
+        int count = 0;
+        for (int i = 1; i <= n && count < k; i++) {
+            String key = String.valueOf(i);
+            if (obj.has(key)) {
+                JsonObject share = obj.getAsJsonObject(key);
+                int base = Integer.parseInt(share.get("base").getAsString());
+                String value = share.get("value").getAsString();
+                BigInteger converted = new BigInteger(value, base);
+
+                x[count] = i;
+                y[count] = converted;
+                count++;
+            }
+        }
+
+        if (count < k) {
+            System.out.println("Not enough valid shares to reconstruct the secret.");
+            return;
+        }
+
+        BigInteger secret = reconstructSecret(x, y, k);
+        System.out.println("Recovered Secret: " + secret);
+    }
+
+    public static void main(String[] args) {
+        // Example Input #1
+        String jsonInput1 = "{\n" +
+                "  \"keys\": { \"n\": 10, \"k\": 7 },\n" +
+                "  \"1\": { \"base\": \"6\", \"value\": \"13444211440455345511\" },\n" +
+                "  \"2\": { \"base\": \"15\", \"value\": \"aed7015a346d63\" },\n" +
+                "  \"3\": { \"base\": \"15\", \"value\": \"6aeeb69631c227c\" },\n" +
+                "  \"4\": { \"base\": \"16\", \"value\": \"e1b5e05623d881f\" },\n" +
+                "  \"5\": { \"base\": \"8\", \"value\": \"316034514573652620673\" },\n" +
+                "  \"6\": { \"base\": \"3\", \"value\": \"2122212201122002221120200210011020220200\" },\n" +
+                "  \"7\": { \"base\": \"3\", \"value\": \"20120221122211000100210021102001201112121\" },\n" +
+                "  \"8\": { \"base\": \"6\", \"value\": \"20220554335330240002224253\" },\n" +
+                "  \"9\": { \"base\": \"12\", \"value\": \"45153788322a1255483\" },\n" +
+                "  \"10\": { \"base\": \"7\", \"value\": \"1101613130313526312514143\" }\n" +
+                "}";
+
+        // Example Input #2
+        String jsonInput2 = "{\n" +
+                "  \"keys\": { \"n\": 4, \"k\": 3 },\n" +
+                "  \"1\": { \"base\": \"10\", \"value\": \"4\" },\n" +
+                "  \"2\": { \"base\": \"2\", \"value\": \"111\" },\n" +
+                "  \"3\": { \"base\": \"10\", \"value\": \"12\" },\n" +
+                "  \"6\": { \"base\": \"4\", \"value\": \"213\" }\n" +
+                "}";
+
+        System.out.println("== Input 1 (k=7) ==");
+        processJson(jsonInput1);
+
+        System.out.println("\n== Input 2 (k=3) ==");
+        processJson(jsonInput2);
+    }
+}
